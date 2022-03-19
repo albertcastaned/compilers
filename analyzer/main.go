@@ -1,3 +1,6 @@
+// Alberto Castañeda Arana
+// A01250647
+
 package main
 
 import (
