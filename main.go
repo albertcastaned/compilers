@@ -35,4 +35,12 @@ func main() {
 		strings.Join(output.terminals, ", "),
 		strings.Join(output.non_terminals, ", "),
 	)
+
+	size := len(output.non_terminals)
+
+	firsts_state := GetFirsts(lines, output)
+	for i := 0; i < size; i++ {
+		non_terminal := output.non_terminals[i]
+		fmt.Printf("%s => FIRST = {%s}\n", non_terminal, strings.Join(firsts_state[non_terminal], ", "))
+	}
 }
