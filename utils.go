@@ -1,5 +1,7 @@
 package main
 
+import "strings"
+
 // Funcion para regresar una lista de cadenas libre de duplicados dado
 // una lista de cadenas.
 func RemoveDuplicates(str []string) []string {
@@ -23,4 +25,13 @@ func Contains(list []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// Funcion que dado una produccion ,regresa su izquierdo y dercho
+func SplitProduction(production string) (string, string) {
+	splitted := strings.Split(production, PRODUCTION_DELIMITER)
+	left := splitted[0]
+	right := splitted[1]
+
+	return left, right
 }

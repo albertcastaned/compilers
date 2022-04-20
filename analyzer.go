@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"strings"
 )
 
@@ -14,6 +12,8 @@ type FOLLOWS map[string][]string
 
 var FIRSTS_CACHE_STATE = make(FIRSTS)
 var FOLLOWS_CACHE_STATE = make(FOLLOWS)
+
+var LL1_VALID = true
 
 // Estructura de analisis
 type AnalyzerOutput struct {
@@ -62,47 +62,47 @@ func Analyze(lines []string) AnalyzerOutput {
 
 	// Para cada produccion, obtener izquierda y derecha con el delimitador.
 	for i := 0; i < size; i++ {
-		splitted := strings.Split(lines[i], PRODUCTION_DELIMITER)
-		left = append(left, splitted[0])
-		right = append(right, splitted[1])
+		a, b := SplitProduction(lines[i])
+		left = append(left, a)
+		right = append(right, b)
 	}
 
 	// Llamadas a funciones para regresar terminales y no terminales
-	nonTerminals := GetNonTerminals(left)
+	non_terminals := GetNonTerminals(left)
 	terminals := GetTerminals(left, right)
 
-	return AnalyzerOutput{terminals, nonTerminals}
+	return AnalyzerOutput{terminals, non_terminals}
 }
 
-func FindFirst(lines []string, non_terminal string, analyzer AnalyzerOutput) []string {
+func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []string {
 
-	cache, found := FIRSTS_CACHE_STATE[non_terminal]
+	cache, found := FIRSTS_CACHE_STATE[value]
 	if found {
 		return cache
 	}
 
 	var result []string
 
-	size := len(lines)
+	// Value is a terminal, first of a terminal is the terminal itself..
+	if Contains(analyzer.terminals, value) {
+		var result []string = []string{value}
+		return result
+	}
+
+	size := len(productions)
 
 	for i := 0; i < size; i++ {
-		splitted := strings.Split(lines[i], PRODUCTION_DELIMITER)
-		left := splitted[0]
+		left, right := SplitProduction(productions[i])
 
-		if left != non_terminal {
+		if left != value {
 			continue
 		}
 
-		right := splitted[1]
-
 		first_right := strings.Split(right, " ")[0]
 
-		if non_terminal == first_right {
-			//TODO: IMprove error handling
-
-			// Recursion found. Not LL1.
-			fmt.Fprintf(os.Stderr, "Not valid LL(1) format.\n")
-			os.Exit(1)
+		if value == first_right {
+			LL1_VALID = false
+			continue
 		}
 
 		// If epsilon
@@ -112,7 +112,7 @@ func FindFirst(lines []string, non_terminal string, analyzer AnalyzerOutput) []s
 
 		// If is a non terminal, find firsts of that non terminal
 		if Contains(analyzer.non_terminals, first_right) {
-			found := FindFirst(lines, first_right, analyzer)
+			found := FindFirst(productions, first_right, analyzer)
 			result = append(result, found...)
 		} else {
 			result = append(result, first_right)
@@ -120,17 +120,88 @@ func FindFirst(lines []string, non_terminal string, analyzer AnalyzerOutput) []s
 
 	}
 	// Save to cache
-	FIRSTS_CACHE_STATE[non_terminal] = result
+	FIRSTS_CACHE_STATE[value] = result
 	return result
 }
 
-func GetFirsts(lines []string, analyzer AnalyzerOutput) FIRSTS {
+func GetFirsts(productions []string, analyzer AnalyzerOutput) (FIRSTS, bool) {
 	size := len(analyzer.non_terminals)
 
 	for i := 0; i < size; i++ {
 		non_terminal := analyzer.non_terminals[i]
-		FindFirst(lines, non_terminal, analyzer)
+		FindFirst(productions, non_terminal, analyzer)
 	}
 
-	return FIRSTS_CACHE_STATE
+	return FIRSTS_CACHE_STATE, LL1_VALID
+}
+
+func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []string {
+	cache, found := FOLLOWS_CACHE_STATE[value]
+	if found {
+		return cache
+	}
+
+	var follows []string
+
+	is_start_symbol := strings.Split(productions[0], PRODUCTION_DELIMITER)[0] == value
+
+	// First rule
+	if is_start_symbol {
+		follows = append(follows, "$")
+	}
+
+	for _, production := range productions {
+		left, right := SplitProduction(production)
+
+		tokens := strings.Split(right, " ")
+		size_tokens := len(tokens)
+
+		//TODO: CHECK RECURSION
+		for index, token := range tokens {
+			third_rule := false
+
+			if token == value {
+
+				// Is last element
+				if index+1 == size_tokens {
+					// Rule 3: B -> aA where A is our desired nonterminal
+					third_rule = true
+				} else {
+					// Rule 3: B -> aAB only when B -> epsilon.
+					if tokens[index+1] == "'" {
+						third_rule = true
+					} else {
+						// Rule 2: B -> aAB -> FOLLOW(A) = FIRST(B)
+						// Get firsts of next token, previous if statement protects from out of array bounds
+						follows = append(follows, FindFirst(productions, tokens[index+1], analyzer)...)
+					}
+				}
+
+				// Rule 3: FOLLOW(A) = FOLLOW(B) where A would be our left and B our current token
+				if third_rule {
+
+					// Protect against recursion
+					if left == value {
+						LL1_VALID = false
+						continue
+					}
+					follows = append(follows, FindFollow(productions, left, analyzer)...)
+				}
+			}
+		}
+
+	}
+
+	FOLLOWS_CACHE_STATE[value] = RemoveDuplicates(follows)
+	return follows
+}
+
+func GetFollows(productions []string, analyzer AnalyzerOutput) (FOLLOWS, bool) {
+	size := len(analyzer.non_terminals)
+	for i := 0; i < size; i++ {
+		non_terminal := analyzer.non_terminals[i]
+		FindFollow(productions, non_terminal, analyzer)
+	}
+
+	return FOLLOWS_CACHE_STATE, LL1_VALID
 }

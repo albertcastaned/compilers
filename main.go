@@ -38,9 +38,19 @@ func main() {
 
 	size := len(output.non_terminals)
 
-	firsts_state := GetFirsts(lines, output)
+	firsts_state, LL1_VALID_FIRSTS := GetFirsts(lines, output)
+	follows_state, LL1_VALID_FOLLOWS := GetFollows(lines, output)
+
 	for i := 0; i < size; i++ {
 		non_terminal := output.non_terminals[i]
-		fmt.Printf("%s => FIRST = {%s}\n", non_terminal, strings.Join(firsts_state[non_terminal], ", "))
+		fmt.Printf("%s => FIRST = {%s}, FOLLOW = {%s}\n", non_terminal, strings.Join(firsts_state[non_terminal], ", "), strings.Join(follows_state[non_terminal], ", "))
 	}
+
+	var ll1_valid string
+	if LL1_VALID_FIRSTS || LL1_VALID_FOLLOWS {
+		ll1_valid = "Yes"
+	} else {
+		ll1_valid = "No"
+	}
+	fmt.Printf("LL(1)?  %s\n", ll1_valid)
 }
