@@ -35,3 +35,8 @@ func SplitProduction(production string) (string, string) {
 
 	return left, right
 }
+
+// Funcion para transformar todos los epsilons con formato "' '" a "''", eliminando el espacio
+func TransformEpsilons(line string) string {
+	return strings.ReplaceAll(line, "' '", "''")
+}

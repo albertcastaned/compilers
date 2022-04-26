@@ -107,6 +107,7 @@ func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []st
 
 		// If epsilon
 		if first_right == "'" {
+			result = append(result, "' '")
 			continue
 		}
 
@@ -120,7 +121,7 @@ func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []st
 
 	}
 	// Save to cache
-	FIRSTS_CACHE_STATE[value] = result
+	FIRSTS_CACHE_STATE[value] = RemoveDuplicates(result)
 	return result
 }
 
