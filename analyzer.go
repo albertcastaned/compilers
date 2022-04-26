@@ -13,8 +13,6 @@ type FOLLOWS map[string][]string
 var FIRSTS_CACHE_STATE = make(FIRSTS)
 var FOLLOWS_CACHE_STATE = make(FOLLOWS)
 
-var RECURSION_FOUND = false
-
 // Estructura de analisis
 type AnalyzerOutput struct {
 	terminals, non_terminals []string
@@ -74,7 +72,40 @@ func Analyze(lines []string) AnalyzerOutput {
 	return AnalyzerOutput{terminals, non_terminals}
 }
 
-func FindFirst(productions []string, value string, analyzer AnalyzerOutput, allowDuplicates bool) []string {
+func FindProductionFirst(productions []string, index int, analyzer AnalyzerOutput) []string {
+	var result []string
+	left, right := SplitProduction(productions[index])
+
+	first_right := strings.Split(right, " ")[0]
+
+	cache, found := FIRSTS_CACHE_STATE[first_right]
+	if found {
+		return cache
+	}
+
+	// Handle recursion
+	if left == first_right {
+		return result
+	}
+
+	// If epsilon
+	if first_right == "'" {
+		result = append(result, "' '")
+		return result
+	}
+
+	// If is a non terminal, find firsts of that non terminal
+	if Contains(analyzer.non_terminals, first_right) {
+		found := FindFirst(productions, first_right, analyzer)
+		result = append(result, found...)
+	} else {
+		result = append(result, first_right)
+	}
+
+	return result
+}
+
+func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []string {
 
 	cache, found := FIRSTS_CACHE_STATE[value]
 	if found {
@@ -92,53 +123,17 @@ func FindFirst(productions []string, value string, analyzer AnalyzerOutput, allo
 	size := len(productions)
 
 	for i := 0; i < size; i++ {
-		left, right := SplitProduction(productions[i])
+		left, _ := SplitProduction(productions[i])
 
-		if left != value {
-			continue
+		if left == value {
+			result = append(result, FindProductionFirst(productions, i, analyzer)...)
 		}
-
-		first_right := strings.Split(right, " ")[0]
-
-		if value == first_right {
-			RECURSION_FOUND = true
-			continue
-		}
-
-		// If epsilon
-		if first_right == "'" {
-			result = append(result, "' '")
-			continue
-		}
-
-		// If is a non terminal, find firsts of that non terminal
-		if Contains(analyzer.non_terminals, first_right) {
-			found := FindFirst(productions, first_right, analyzer, allowDuplicates)
-			result = append(result, found...)
-		} else {
-			result = append(result, first_right)
-		}
-
 	}
 
-	if !allowDuplicates {
-		result = RemoveDuplicates(result)
-	}
-
+	result = RemoveDuplicates(result)
 	// Save to cache
 	FIRSTS_CACHE_STATE[value] = result
 	return result
-}
-
-func GetFirsts(productions []string, analyzer AnalyzerOutput) FIRSTS {
-	size := len(analyzer.non_terminals)
-
-	for i := 0; i < size; i++ {
-		non_terminal := analyzer.non_terminals[i]
-		FindFirst(productions, non_terminal, analyzer, false)
-	}
-
-	return FIRSTS_CACHE_STATE
 }
 
 func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []string {
@@ -174,13 +169,13 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 				} else {
 					// Rule 3: B -> aAB only when B -> epsilon.
 
-					firsts_of_right := Contains(FindFirst(productions, tokens[index+1], analyzer, false), "' '")
+					firsts_of_right := Contains(FindFirst(productions, tokens[index+1], analyzer), "' '")
 					if firsts_of_right {
 						third_rule = true
 					}
 					// Rule 2: B -> aAB -> FOLLOW(A) = FIRST(B)
 					// Get firsts of next token, previous if statement protects from out of array bounds
-					follows = append(follows, FindFirst(productions, tokens[index+1], analyzer, false)...)
+					follows = append(follows, FindFirst(productions, tokens[index+1], analyzer)...)
 				}
 
 				// Rule 3: FOLLOW(A) = FOLLOW(B) where A would be our left and B our current token
@@ -198,37 +193,23 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 
 	}
 
-	FOLLOWS_CACHE_STATE[value] = RemoveEpsilons(RemoveDuplicates(follows))
+	follows = RemoveEpsilons(RemoveDuplicates(follows))
+
+	FOLLOWS_CACHE_STATE[value] = follows
 	return follows
 }
 
-func GetFollows(productions []string, analyzer AnalyzerOutput) FOLLOWS {
-	size := len(analyzer.non_terminals)
-	for i := 0; i < size; i++ {
-		non_terminal := analyzer.non_terminals[i]
-		FindFollow(productions, non_terminal, analyzer)
-	}
-
-	return FOLLOWS_CACHE_STATE
-}
-
 func IsLL1Valid(productions []string, analyzer AnalyzerOutput) bool {
-	if RECURSION_FOUND {
-		return false
-	}
-
 	non_terminals := analyzer.non_terminals
-
-	// Reset cache
-	FIRSTS_CACHE_STATE = make(FIRSTS)
-
 	for _, non_terminal := range non_terminals {
 		var found []string
+		var indexes []int
 
-		for _, production := range productions {
+		for index, production := range productions {
 			left, _ := SplitProduction(production)
 			if left == non_terminal {
 				found = append(found, production)
+				indexes = append(indexes, index)
 			}
 		}
 
@@ -237,15 +218,40 @@ func IsLL1Valid(productions []string, analyzer AnalyzerOutput) bool {
 			continue
 		}
 
-		// Obtener firsts del no terminal con duplicados permitidos. Si un duplicado es encontrado
-		// entonces la primera regla de LL1 no se cumple. Indirectamente, la regla 2
-		// tambien se checa con esto ya que si existe un epsilon duplicado entones no se cumple la segunda regla. :)
-		firsts := FindFirst(productions, non_terminal, analyzer, true)
+		combinations := CreateCombinations(len(indexes))
 
-		if HasDuplicate(firsts) {
-			return false
+		for _, combination := range combinations {
+			firsts_a := FindProductionFirst(productions, indexes[combination[0]-1], analyzer)
+			firsts_b := FindProductionFirst(productions, indexes[combination[1]-1], analyzer)
+
+			intersection := Intersection(firsts_a, firsts_b)
+
+			// Primera regla: Interseccion de FIRST(a) y FIRST(b) debe ser un conjunto vacio.
+			// la Segunda regla se verifica con esta misma condicion, ya que si existe mas de dos epsilon la interseccion
+			// seria mayor a 0.
+			if len(intersection) != 0 {
+				return false
+			}
+
+			follows := FindFollow(productions, non_terminal, analyzer)
+
+			// Tercera regla.
+			if Contains(firsts_a, "' '") {
+				third_intersection := Intersection(firsts_b, follows)
+
+				if len(third_intersection) != 0 {
+					return false
+				}
+			}
+
+			if Contains(firsts_b, "' '") {
+				third_intersection := Intersection(firsts_a, follows)
+
+				if len(third_intersection) != 0 {
+					return false
+				}
+			}
 		}
-
 	}
 
 	return true

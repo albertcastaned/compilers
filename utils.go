@@ -63,15 +63,18 @@ func CreateCombinations(n int) []Combination {
 	return result
 }
 
-// Funcion para verificar si un arreglo de cadenas tiene un duplicado
-func HasDuplicate(values []string) bool {
-	visited := make(map[string]bool, 0)
-	for i := 0; i < len(values); i++ {
-		if visited[values[i]] == true {
-			return true
-		} else {
-			visited[values[i]] = true
+// Funcion para obtener la interseccion de dos arreglos.
+func Intersection(a, b []string) (c []string) {
+	result := make(map[string]bool)
+
+	for _, item := range a {
+		result[item] = true
+	}
+
+	for _, item := range b {
+		if _, ok := result[item]; ok {
+			c = append(c, item)
 		}
 	}
-	return false
+	return
 }

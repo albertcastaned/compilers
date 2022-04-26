@@ -37,12 +37,12 @@ func main() {
 
 	size := len(output.non_terminals)
 
-	firsts_state := GetFirsts(lines, output)
-	follows_state := GetFollows(lines, output)
-
 	for i := 0; i < size; i++ {
 		non_terminal := output.non_terminals[i]
-		fmt.Printf("%s => FIRST = {%s}, FOLLOW = {%s}\n", non_terminal, strings.Join(firsts_state[non_terminal], ", "), strings.Join(follows_state[non_terminal], ", "))
+		firsts := FindFirst(lines, non_terminal, output)
+		follows := FindFollow(lines, non_terminal, output)
+
+		fmt.Printf("%s => FIRST = {%s}, FOLLOW = {%s}\n", non_terminal, strings.Join(firsts, ", "), strings.Join(follows, ", "))
 	}
 
 	var ll1_valid string
