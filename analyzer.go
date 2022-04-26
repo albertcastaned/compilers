@@ -13,7 +13,7 @@ type FOLLOWS map[string][]string
 var FIRSTS_CACHE_STATE = make(FIRSTS)
 var FOLLOWS_CACHE_STATE = make(FOLLOWS)
 
-var LL1_VALID = true
+var RECURSION_FOUND = false
 
 // Estructura de analisis
 type AnalyzerOutput struct {
@@ -74,7 +74,7 @@ func Analyze(lines []string) AnalyzerOutput {
 	return AnalyzerOutput{terminals, non_terminals}
 }
 
-func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []string {
+func FindFirst(productions []string, value string, analyzer AnalyzerOutput, allowDuplicates bool) []string {
 
 	cache, found := FIRSTS_CACHE_STATE[value]
 	if found {
@@ -101,7 +101,7 @@ func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []st
 		first_right := strings.Split(right, " ")[0]
 
 		if value == first_right {
-			LL1_VALID = false
+			RECURSION_FOUND = true
 			continue
 		}
 
@@ -113,27 +113,32 @@ func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []st
 
 		// If is a non terminal, find firsts of that non terminal
 		if Contains(analyzer.non_terminals, first_right) {
-			found := FindFirst(productions, first_right, analyzer)
+			found := FindFirst(productions, first_right, analyzer, allowDuplicates)
 			result = append(result, found...)
 		} else {
 			result = append(result, first_right)
 		}
 
 	}
+
+	if !allowDuplicates {
+		result = RemoveDuplicates(result)
+	}
+
 	// Save to cache
-	FIRSTS_CACHE_STATE[value] = RemoveDuplicates(result)
+	FIRSTS_CACHE_STATE[value] = result
 	return result
 }
 
-func GetFirsts(productions []string, analyzer AnalyzerOutput) (FIRSTS, bool) {
+func GetFirsts(productions []string, analyzer AnalyzerOutput) FIRSTS {
 	size := len(analyzer.non_terminals)
 
 	for i := 0; i < size; i++ {
 		non_terminal := analyzer.non_terminals[i]
-		FindFirst(productions, non_terminal, analyzer)
+		FindFirst(productions, non_terminal, analyzer, false)
 	}
 
-	return FIRSTS_CACHE_STATE, LL1_VALID
+	return FIRSTS_CACHE_STATE
 }
 
 func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []string {
@@ -157,7 +162,6 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 		tokens := strings.Split(right, " ")
 		size_tokens := len(tokens)
 
-		//TODO: CHECK RECURSION
 		for index, token := range tokens {
 			third_rule := false
 
@@ -169,13 +173,14 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 					third_rule = true
 				} else {
 					// Rule 3: B -> aAB only when B -> epsilon.
-					if tokens[index+1] == "'" {
+
+					firsts_of_right := Contains(FindFirst(productions, tokens[index+1], analyzer, false), "' '")
+					if firsts_of_right {
 						third_rule = true
-					} else {
-						// Rule 2: B -> aAB -> FOLLOW(A) = FIRST(B)
-						// Get firsts of next token, previous if statement protects from out of array bounds
-						follows = append(follows, FindFirst(productions, tokens[index+1], analyzer)...)
 					}
+					// Rule 2: B -> aAB -> FOLLOW(A) = FIRST(B)
+					// Get firsts of next token, previous if statement protects from out of array bounds
+					follows = append(follows, FindFirst(productions, tokens[index+1], analyzer, false)...)
 				}
 
 				// Rule 3: FOLLOW(A) = FOLLOW(B) where A would be our left and B our current token
@@ -183,9 +188,9 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 
 					// Protect against recursion
 					if left == value {
-						LL1_VALID = false
 						continue
 					}
+
 					follows = append(follows, FindFollow(productions, left, analyzer)...)
 				}
 			}
@@ -193,16 +198,55 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 
 	}
 
-	FOLLOWS_CACHE_STATE[value] = RemoveDuplicates(follows)
+	FOLLOWS_CACHE_STATE[value] = RemoveEpsilons(RemoveDuplicates(follows))
 	return follows
 }
 
-func GetFollows(productions []string, analyzer AnalyzerOutput) (FOLLOWS, bool) {
+func GetFollows(productions []string, analyzer AnalyzerOutput) FOLLOWS {
 	size := len(analyzer.non_terminals)
 	for i := 0; i < size; i++ {
 		non_terminal := analyzer.non_terminals[i]
 		FindFollow(productions, non_terminal, analyzer)
 	}
 
-	return FOLLOWS_CACHE_STATE, LL1_VALID
+	return FOLLOWS_CACHE_STATE
+}
+
+func IsLL1Valid(productions []string, analyzer AnalyzerOutput) bool {
+	if RECURSION_FOUND {
+		return false
+	}
+
+	non_terminals := analyzer.non_terminals
+
+	// Reset cache
+	FIRSTS_CACHE_STATE = make(FIRSTS)
+
+	for _, non_terminal := range non_terminals {
+		var found []string
+
+		for _, production := range productions {
+			left, _ := SplitProduction(production)
+			if left == non_terminal {
+				found = append(found, production)
+			}
+		}
+
+		// Si solo se tiene una produccion para este no terminal, no hay ninguna regla que checar.
+		if len(found) <= 1 {
+			continue
+		}
+
+		// Obtener firsts del no terminal con duplicados permitidos. Si un duplicado es encontrado
+		// entonces la primera regla de LL1 no se cumple. Indirectamente, la regla 2
+		// tambien se checa con esto ya que si existe un epsilon duplicado entones no se cumple la segunda regla. :)
+		firsts := FindFirst(productions, non_terminal, analyzer, true)
+
+		if HasDuplicate(firsts) {
+			return false
+		}
+
+	}
+
+	return true
 }

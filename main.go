@@ -12,7 +12,6 @@ import (
 
 func main() {
 	var productions_amount int
-
 	// Se inicia instancia de scanner para contemplar espacios vacios
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -38,8 +37,8 @@ func main() {
 
 	size := len(output.non_terminals)
 
-	firsts_state, LL1_VALID_FIRSTS := GetFirsts(lines, output)
-	follows_state, LL1_VALID_FOLLOWS := GetFollows(lines, output)
+	firsts_state := GetFirsts(lines, output)
+	follows_state := GetFollows(lines, output)
 
 	for i := 0; i < size; i++ {
 		non_terminal := output.non_terminals[i]
@@ -47,7 +46,7 @@ func main() {
 	}
 
 	var ll1_valid string
-	if LL1_VALID_FIRSTS || LL1_VALID_FOLLOWS {
+	if IsLL1Valid(lines, output) {
 		ll1_valid = "Yes"
 	} else {
 		ll1_valid = "No"

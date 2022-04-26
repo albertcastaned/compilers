@@ -36,7 +36,42 @@ func SplitProduction(production string) (string, string) {
 	return left, right
 }
 
-// Funcion para transformar todos los epsilons con formato "' '" a "''", eliminando el espacio
-func TransformEpsilons(line string) string {
-	return strings.ReplaceAll(line, "' '", "''")
+// Funcion para eliminar los epsilons de una lista de cadendas
+func RemoveEpsilons(s []string) []string {
+	for i, v := range s {
+		if v == "' '" {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
+}
+
+type Combination [2]int
+
+// Funcion para crear un arreglo de combinaciones posibles numericos de 1 a n
+func CreateCombinations(n int) []Combination {
+	var result []Combination
+
+	for left_index := 1; left_index < n+1; left_index++ {
+		for right_index := left_index + 1; right_index < n+1; right_index++ {
+			var combination Combination
+			combination[0] = left_index
+			combination[1] = right_index
+			result = append(result, combination)
+		}
+	}
+	return result
+}
+
+// Funcion para verificar si un arreglo de cadenas tiene un duplicado
+func HasDuplicate(values []string) bool {
+	visited := make(map[string]bool, 0)
+	for i := 0; i < len(values); i++ {
+		if visited[values[i]] == true {
+			return true
+		} else {
+			visited[values[i]] = true
+		}
+	}
+	return false
 }
