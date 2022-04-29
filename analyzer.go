@@ -7,6 +7,7 @@ import (
 // Delimitador que separa no terminales y terminales de las producciones
 const PRODUCTION_DELIMITER = " -> "
 
+// Inicializamos cache de FIRSTS y de FOLLOWS
 type FIRSTS map[string][]string
 type FOLLOWS map[string][]string
 
@@ -72,41 +73,48 @@ func Analyze(lines []string) AnalyzerOutput {
 	return AnalyzerOutput{terminals, non_terminals}
 }
 
+// Funcion para regresar los FIRSTS de una produccion especifica
 func FindProductionFirst(productions []string, index int, analyzer AnalyzerOutput) []string {
 	var result []string
+
+	// Obtenemos izquierdo y derecho de produccion
 	left, right := SplitProduction(productions[index])
 
 	first_right := strings.Split(right, " ")[0]
 
+	// Recuperamos de cache los firsts si ya han sido calculados antes
 	cache, found := FIRSTS_CACHE_STATE[first_right]
 	if found {
 		return cache
 	}
 
-	// Handle recursion
+	// Manejamos casos de recursion infinito
 	if left == first_right {
 		return result
 	}
 
-	// If epsilon
+	// Si encontramos un epsilon, lo agregamos en formato correcto
 	if first_right == "'" {
 		result = append(result, "' '")
 		return result
 	}
 
-	// If is a non terminal, find firsts of that non terminal
+	// Si es un non terminal, llamar recursivamente a buscar los firsts de ese non terminal
 	if Contains(analyzer.non_terminals, first_right) {
 		found := FindFirst(productions, first_right, analyzer)
 		result = append(result, found...)
 	} else {
+		// Si es un terminal, agregamos a la lista de firsts
 		result = append(result, first_right)
 	}
 
 	return result
 }
 
+// Funcion para encontrar todos los FIRSTS dado un no terminal
 func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []string {
 
+	// Recuperamos de cache los firsts si ya han sido calculados antes
 	cache, found := FIRSTS_CACHE_STATE[value]
 	if found {
 		return cache
@@ -114,7 +122,7 @@ func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []st
 
 	var result []string
 
-	// Value is a terminal, first of a terminal is the terminal itself..
+	// Verificamos que el valor es un terminal y si es asi regresar al terminal en si
 	if Contains(analyzer.terminals, value) {
 		var result []string = []string{value}
 		return result
@@ -122,21 +130,28 @@ func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []st
 
 	size := len(productions)
 
+	// Para cada produccion, separar izquierda y derecha
 	for i := 0; i < size; i++ {
 		left, _ := SplitProduction(productions[i])
 
+		// Si la produccion empieza con el no terminal deseado, buscamos los firsts de esta produccion.
 		if left == value {
 			result = append(result, FindProductionFirst(productions, i, analyzer)...)
 		}
 	}
 
+	// Eliminamos posibles duplicados de resultado
 	result = RemoveDuplicates(result)
-	// Save to cache
+
+	// Guardamos a cache o dp para posterior recuperacion.
 	FIRSTS_CACHE_STATE[value] = result
 	return result
 }
 
+// Funcion para encontrar los follows dado una lista de producciones y un valor
 func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []string {
+
+	// Recuperamos de cache los follows si ya han sido calculados antes
 	cache, found := FOLLOWS_CACHE_STATE[value]
 	if found {
 		return cache
@@ -144,25 +159,30 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 
 	var follows []string
 
+	// Si es el no terminal inicial, o el izquierdo de la primera produccion, se activa la primera regla
 	is_start_symbol := strings.Split(productions[0], PRODUCTION_DELIMITER)[0] == value
 
-	// First rule
+	// Rule 1: Add $ to start symbol
 	if is_start_symbol {
 		follows = append(follows, "$")
 	}
 
+	// Para cada produccion:
 	for _, production := range productions {
 		left, right := SplitProduction(production)
 
+		// Obteenmos tokens del lado derecho de la produccion
 		tokens := strings.Split(right, " ")
 		size_tokens := len(tokens)
 
+		// Para cada token de la produccion
 		for index, token := range tokens {
 			third_rule := false
 
+			// Si el token is igual al no terminal buscado:
 			if token == value {
 
-				// Is last element
+				// Si es el ultimo elemento
 				if index+1 == size_tokens {
 					// Rule 3: B -> aA where A is our desired nonterminal
 					third_rule = true
@@ -174,18 +194,19 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 						third_rule = true
 					}
 					// Rule 2: B -> aAB -> FOLLOW(A) = FIRST(B)
-					// Get firsts of next token, previous if statement protects from out of array bounds
+					// Obtenemos los firsts del siguiente token.
 					follows = append(follows, FindFirst(productions, tokens[index+1], analyzer)...)
 				}
 
 				// Rule 3: FOLLOW(A) = FOLLOW(B) where A would be our left and B our current token
 				if third_rule {
 
-					// Protect against recursion
+					// Proteccion contra posible recursion infinita
 					if left == value {
 						continue
 					}
 
+					// Con la tercer regla, agregamos y buscamos los follows de la izquierda
 					follows = append(follows, FindFollow(productions, left, analyzer)...)
 				}
 			}
@@ -193,18 +214,24 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 
 	}
 
+	// Eliminamos los epsilons encontrados y los duplicados
 	follows = RemoveEpsilons(RemoveDuplicates(follows))
 
+	// Guardamos a cache de follows
 	FOLLOWS_CACHE_STATE[value] = follows
 	return follows
 }
 
+// Funcion para verificar que dado una lista de producciones, la gramatica es LL(1) valida.
 func IsLL1Valid(productions []string, analyzer AnalyzerOutput) bool {
 	non_terminals := analyzer.non_terminals
+
+	// Para cada no terminal
 	for _, non_terminal := range non_terminals {
 		var found []string
 		var indexes []int
 
+		// Para cada produccion, contamos cuantas hay que empiezan con el no terminal en iteracion.
 		for index, production := range productions {
 			left, _ := SplitProduction(production)
 			if left == non_terminal {
@@ -218,9 +245,11 @@ func IsLL1Valid(productions []string, analyzer AnalyzerOutput) bool {
 			continue
 		}
 
+		// Creamos posibles combinaciones de pares de este no terminal en las producciones
 		combinations := CreateCombinations(len(indexes))
 
 		for _, combination := range combinations {
+			// Obtenemos firsts del par
 			firsts_a := FindProductionFirst(productions, indexes[combination[0]-1], analyzer)
 			firsts_b := FindProductionFirst(productions, indexes[combination[1]-1], analyzer)
 
@@ -233,6 +262,7 @@ func IsLL1Valid(productions []string, analyzer AnalyzerOutput) bool {
 				return false
 			}
 
+			// Buscamos follows del no teminal
 			follows := FindFollow(productions, non_terminal, analyzer)
 
 			// Tercera regla.

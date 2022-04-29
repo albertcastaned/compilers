@@ -46,6 +46,7 @@ func RemoveEpsilons(s []string) []string {
 	return s
 }
 
+// Definimos el tipo de dato Combination de dos valores enteros.
 type Combination [2]int
 
 // Funcion para crear un arreglo de combinaciones posibles numericos de 1 a n
