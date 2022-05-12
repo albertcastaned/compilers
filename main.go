@@ -40,7 +40,7 @@ func main() {
 	for i := 0; i < size; i++ {
 		non_terminal := output.non_terminals[i]
 		firsts := FindFirst(lines, non_terminal, output)
-		follows := FindFollow(lines, non_terminal, output)
+		follows := FindFollow(lines, non_terminal, output, "")
 
 		fmt.Printf("%s => FIRST = {%s}, FOLLOW = {%s}\n", non_terminal, strings.Join(firsts, ", "), strings.Join(follows, ", "))
 	}
@@ -52,4 +52,8 @@ func main() {
 		ll1_valid = "No"
 	}
 	fmt.Printf("LL(1)?  %s\n", ll1_valid)
+
+	GetLL1Table(lines, output)
+
+	fmt.Print(CheckValidInput(lines, "id + x"))
 }

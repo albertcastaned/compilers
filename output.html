@@ -1,0 +1,100 @@
+
+		<!DOCTYPE html>
+		<html>
+		<body>
+		<table style="border: 1px solid black">
+	<tr>
+<th style="border: 1px solid black"> Non Terminal </th>
+
+<th style="border: 1px solid black"> + </th>
+
+<th style="border: 1px solid black"> * </th>
+
+<th style="border: 1px solid black"> ( </th>
+
+<th style="border: 1px solid black"> ) </th>
+
+<th style="border: 1px solid black"> id </th>
+
+<th style="border: 1px solid black"> $ </th>
+</tr>
+<tr>
+<td style="border: 1px solid black"> E </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> E -> T EPrime </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> E -> T EPrime </td>
+
+<td style="border: 1px solid black">  </td>
+</tr>
+<tr>
+<td style="border: 1px solid black"> EPrime </td>
+
+<td style="border: 1px solid black"> EPrime -> + T EPrime </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> EPrime -> ' ' </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> EPrime -> ' ' </td>
+</tr>
+<tr>
+<td style="border: 1px solid black"> T </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> T -> F TPrime </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> T -> F TPrime </td>
+
+<td style="border: 1px solid black">  </td>
+</tr>
+<tr>
+<td style="border: 1px solid black"> TPrime </td>
+
+<td style="border: 1px solid black"> TPrime -> ' ' </td>
+
+<td style="border: 1px solid black"> TPrime -> * F TPrime </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> TPrime -> ' ' </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> TPrime -> ' ' </td>
+</tr>
+<tr>
+<td style="border: 1px solid black"> F </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> F -> ( E ) </td>
+
+<td style="border: 1px solid black">  </td>
+
+<td style="border: 1px solid black"> F -> id </td>
+
+<td style="border: 1px solid black">  </td>
+</tr>
+
+		</table>
+		</body>
+		</html>
+		

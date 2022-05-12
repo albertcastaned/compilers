@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // Funcion para regresar una lista de cadenas libre de duplicados dado
 // una lista de cadenas.
@@ -78,4 +81,45 @@ func Intersection(a, b []string) (c []string) {
 		}
 	}
 	return
+}
+
+func BuildHtmlRow(values []string, isHeader bool) string {
+	var rowStart, rowEnd, result string
+	result = "<tr>"
+
+	if isHeader {
+		rowStart = "<th style=\"border: 1px solid black\">"
+		rowEnd = "</th>"
+	} else {
+		rowStart = "<td style=\"border: 1px solid black\">"
+		rowEnd = "</td>"
+	}
+
+	for _, value := range values {
+		result += fmt.Sprintf("\n%s %s %s\n", rowStart, value, rowEnd)
+	}
+	result += "</tr>\n"
+
+	return result
+}
+
+func PopStack(array []string) []string {
+	return array[:len(array)-1]
+}
+
+func PopQueue(array []string) []string {
+	_, new_array := array, array[1:]
+	return new_array
+}
+
+func LastElement(array []string) string {
+	return array[len(array)-1]
+}
+
+func Reverse(ss []string) []string {
+	last := len(ss) - 1
+	for i := 0; i < len(ss)/2; i++ {
+		ss[i], ss[last-i] = ss[last-i], ss[i]
+	}
+	return ss
 }

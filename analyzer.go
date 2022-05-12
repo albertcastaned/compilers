@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"strings"
 )
 
@@ -13,6 +15,12 @@ type FOLLOWS map[string][]string
 
 var FIRSTS_CACHE_STATE = make(FIRSTS)
 var FOLLOWS_CACHE_STATE = make(FOLLOWS)
+
+type LL_TABLE_VALUE map[string]string
+
+type LL1_TABLE map[string]LL_TABLE_VALUE
+
+var LL1_TABLE_STATE = make(LL1_TABLE)
 
 // Estructura de analisis
 type AnalyzerOutput struct {
@@ -149,11 +157,11 @@ func FindFirst(productions []string, value string, analyzer AnalyzerOutput) []st
 }
 
 // Funcion para encontrar los follows dado una lista de producciones y un valor
-func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []string {
+func FindFollow(productions []string, value string, analyzer AnalyzerOutput, lastCall string) []string {
 
 	// Recuperamos de cache los follows si ya han sido calculados antes
 	cache, found := FOLLOWS_CACHE_STATE[value]
-	if found {
+	if found && len(cache) > 0 {
 		return cache
 	}
 
@@ -200,14 +208,13 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 
 				// Rule 3: FOLLOW(A) = FOLLOW(B) where A would be our left and B our current token
 				if third_rule {
-
 					// Proteccion contra posible recursion infinita
-					if left == value {
+					if lastCall == left {
 						continue
 					}
 
 					// Con la tercer regla, agregamos y buscamos los follows de la izquierda
-					follows = append(follows, FindFollow(productions, left, analyzer)...)
+					follows = append(follows, FindFollow(productions, left, analyzer, value)...)
 				}
 			}
 		}
@@ -219,6 +226,7 @@ func FindFollow(productions []string, value string, analyzer AnalyzerOutput) []s
 
 	// Guardamos a cache de follows
 	FOLLOWS_CACHE_STATE[value] = follows
+
 	return follows
 }
 
@@ -263,7 +271,7 @@ func IsLL1Valid(productions []string, analyzer AnalyzerOutput) bool {
 			}
 
 			// Buscamos follows del no teminal
-			follows := FindFollow(productions, non_terminal, analyzer)
+			follows := FindFollow(productions, non_terminal, analyzer, "")
 
 			// Tercera regla.
 			if Contains(firsts_a, "' '") {
@@ -285,4 +293,142 @@ func IsLL1Valid(productions []string, analyzer AnalyzerOutput) bool {
 	}
 
 	return true
+}
+
+func GetLL1Table(productions []string, analyzer AnalyzerOutput) {
+	non_terminals := analyzer.non_terminals
+
+	FIRSTS_CACHE_STATE = make(FIRSTS)
+
+	// Initialize dictionary
+	for _, non_terminal := range non_terminals {
+		LL1_TABLE_STATE[non_terminal] = make(map[string]string)
+	}
+
+	for _, non_terminal := range non_terminals {
+
+		for index, production := range productions {
+			left, _ := SplitProduction(production)
+
+			if left == non_terminal {
+				firsts := FindProductionFirst(productions, index, analyzer)
+
+				for _, first := range firsts {
+
+					if first == "' '" {
+						follows := FindFollow(productions, non_terminal, analyzer, "")
+						for _, follow := range follows {
+							new_production := fmt.Sprintf("%s -> ' '", non_terminal)
+							LL1_TABLE_STATE[non_terminal][follow] = new_production
+						}
+					} else {
+						LL1_TABLE_STATE[non_terminal][first] = production
+					}
+				}
+			}
+		}
+	}
+
+	// Initialize $
+	analyzer.terminals = append(analyzer.terminals, "$")
+
+	html_output := `
+		<!DOCTYPE html>
+		<html>
+		<body>
+		<table style="border: 1px solid black">
+	`
+
+	header_name := "Non Terminal"
+	header := append([]string{header_name}, analyzer.terminals...)
+	html_output += BuildHtmlRow(header, true)
+
+	for key, values := range LL1_TABLE_STATE {
+		var elements []string
+		elements = append(elements, key)
+		for index, terminal := range header {
+			// Skip header title
+			if index == 0 {
+				continue
+			}
+			element := ""
+			value, found := values[terminal]
+			if found {
+				element = value
+			}
+			elements = append(elements, element)
+		}
+		html_output += BuildHtmlRow(elements, false)
+	}
+
+	html_output += `
+		</table>
+		</body>
+		</html>
+		`
+
+	output_file_dir := "output.html"
+	file, err := os.Create(output_file_dir)
+
+	if err != nil {
+		fmt.Print("File could not be loaded")
+		return
+	} else {
+		_, err := file.WriteString(html_output)
+
+		if err != nil {
+			fmt.Print("An error occured writing the file")
+			return
+		}
+		fmt.Printf("\nFile saved succesfully: %s\n", output_file_dir)
+
+	}
+}
+
+func CheckValidInput(productions []string, input string) bool {
+	var stack []string
+
+	left, _ := SplitProduction(productions[0])
+	first_symbol := left
+
+	stack = append(stack, "$")
+	stack = append(stack, first_symbol)
+
+	input_queue := strings.Split(input, " ")
+	input_queue = append(input_queue, "$")
+
+	for {
+		fmt.Printf("%s | %s\n", stack, input_queue)
+		if len(stack) == 0 {
+			return true
+		}
+
+		stack_element := LastElement(stack)
+		queue_element := input_queue[0]
+
+		if LastElement(stack) == queue_element {
+			// POP
+			stack = PopStack(stack)
+			input_queue = PopQueue(input_queue)
+			continue
+		}
+
+		rule, found := LL1_TABLE_STATE[stack_element][queue_element]
+		if !found {
+			return false
+		}
+
+		stack = PopStack(stack)
+
+		_, right := SplitProduction(rule)
+
+		if right == "' '" {
+			continue
+		}
+
+		tokens := strings.Split(right, " ")
+		tokens = Reverse(tokens)
+
+		stack = append(stack, tokens...)
+	}
 }
