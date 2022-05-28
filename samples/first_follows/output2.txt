@@ -1,4 +1,0 @@
-E => FIRST = {id,(}, FOLLOW = {$,+,)}
-T => FIRST = {id,(}, FOLLOW = {$,+,*,)}
-F => FIRST = {id,(}, FOLLOW = {$,+,*,)}
-LL(1)? No

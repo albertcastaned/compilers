@@ -1,7 +1,10 @@
-6
-A -> a A
-A -> b A
-A -> a B
-B -> b C
-C -> b D
-D -> ' '
+5 4
+goal -> A
+A -> ( A )
+A -> two
+two -> a
+two -> b
+( ( a ) )
+( a ) )
+( ( ( ( ( b ) ) ) ) )
+( ( ( ( ( a b ) ) ) ) )

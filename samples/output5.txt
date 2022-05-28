@@ -1,2 +1,0 @@
-Terminal: a, b, c, d
-Non terminal: S, A, APrime

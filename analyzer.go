@@ -398,7 +398,7 @@ func CheckValidInput(productions []string, input string) bool {
 	input_queue = append(input_queue, "$")
 
 	for {
-		fmt.Printf("%s | %s\n", stack, input_queue)
+		// fmt.Printf("%s | %s\n", stack, input_queue)
 		if len(stack) == 0 {
 			return true
 		}

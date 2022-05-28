@@ -1,6 +1,0 @@
-5
-goal -> A
-A -> ( A )
-A -> two
-two -> a
-two -> b

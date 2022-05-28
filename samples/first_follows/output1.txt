@@ -1,6 +1,0 @@
-E => FIRST = {(,id}, FOLLOW = {$,)}
-EPrime => FIRST = {+,' '}, FOLLOW = {$,)}
-T => FIRST = {(,id}, FOLLOW = {+,$,)}	
-TPrime => FIRST = {*,' '}, FOLLOW = {+,$,)}
-F => FIRST = {(,id}, FOLLOW = {*,+,$,)}
-LL(1)? Yes
