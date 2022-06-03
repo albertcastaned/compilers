@@ -295,33 +295,44 @@ func IsLL1Valid(productions []string, analyzer AnalyzerOutput) bool {
 	return true
 }
 
+// Funcion para construir diccionario para el analisis de LL1 y guardar un archivo HTML con la representacion de la tabla
 func GetLL1Table(productions []string, analyzer AnalyzerOutput) {
 	non_terminals := analyzer.non_terminals
 
+	// Reiniciamos la cache de firsts
 	FIRSTS_CACHE_STATE = make(FIRSTS)
 
-	// Initialize dictionary
+	// Se inicializa el diccionario/hashmap a utilizar
 	for _, non_terminal := range non_terminals {
 		LL1_TABLE_STATE[non_terminal] = make(map[string]string)
 	}
 
+	// Para cada no terminal
 	for _, non_terminal := range non_terminals {
 
+		// Para cada produccion
 		for index, production := range productions {
+			// Separamos izquierda y derecha de la produccion
 			left, _ := SplitProduction(production)
 
+			// Si produccion empieza con el no terminal actual
 			if left == non_terminal {
+				// Buscamos FIRSTS de esta produccion
 				firsts := FindProductionFirst(productions, index, analyzer)
 
 				for _, first := range firsts {
 
+					// Si contiene epsilon
 					if first == "' '" {
+						// Buscamos los follows del no terminal
 						follows := FindFollow(productions, non_terminal, analyzer, "")
 						for _, follow := range follows {
+							// Agregamos al diccionario la produccion NO TERMINAL va a epislon
 							new_production := fmt.Sprintf("%s -> ' '", non_terminal)
 							LL1_TABLE_STATE[non_terminal][follow] = new_production
 						}
 					} else {
+						// Se agrega la produccion al diccionario con la clave no terminal + first
 						LL1_TABLE_STATE[non_terminal][first] = production
 					}
 				}
@@ -329,9 +340,10 @@ func GetLL1Table(productions []string, analyzer AnalyzerOutput) {
 		}
 	}
 
-	// Initialize $
+	// Agregamos $ a la lista de terminales
 	analyzer.terminals = append(analyzer.terminals, "$")
 
+	// Iniciamos contenido de HTML
 	html_output := `
 		<!DOCTYPE html>
 		<html>
@@ -339,19 +351,24 @@ func GetLL1Table(productions []string, analyzer AnalyzerOutput) {
 		<table style="border: 1px solid black">
 	`
 
+	// Empezamos a construir primer renglon de la tabla
 	header_name := "Non Terminal"
 	header := append([]string{header_name}, analyzer.terminals...)
 	html_output += BuildHtmlRow(header, true)
 
+	// Para cada tupla llave valor del diccionario
 	for key, values := range LL1_TABLE_STATE {
 		var elements []string
 		elements = append(elements, key)
+
+		// Para cada terminal en la tabla
 		for index, terminal := range header {
-			// Skip header title
+			// Saltamos la primer celda diagonal
 			if index == 0 {
 				continue
 			}
 			element := ""
+			// Si esta en el diccionario, lo agregamos al html
 			value, found := values[terminal]
 			if found {
 				element = value
@@ -361,6 +378,7 @@ func GetLL1Table(productions []string, analyzer AnalyzerOutput) {
 		html_output += BuildHtmlRow(elements, false)
 	}
 
+	// Terminamos de construir contenido HTML y guardamos el archivo
 	html_output += `
 		</table>
 		</body>
@@ -385,27 +403,35 @@ func GetLL1Table(productions []string, analyzer AnalyzerOutput) {
 	}
 }
 
+// Funcion para validar una entrada dada la gramatica de la clase
 func CheckValidInput(productions []string, input string) bool {
 	var stack []string
 
+	// Obtenemos el simbolo inicial
 	left, _ := SplitProduction(productions[0])
 	first_symbol := left
 
+	// Agregamos % y el simbolo inicial al stack
 	stack = append(stack, "$")
 	stack = append(stack, first_symbol)
 
+	// Agregamos los tokens del input y $ al queue
 	input_queue := strings.Split(input, " ")
 	input_queue = append(input_queue, "$")
 
+	// Ciclo infinito. Eventualmente acabara con return
 	for {
-		// fmt.Printf("%s | %s\n", stack, input_queue)
+
+		// Si el stack esta vacio, se termina la validacion como valida
 		if len(stack) == 0 {
 			return true
 		}
 
+		// Obtenemos ultimo y primer elemento del stack y queue respectivamente
 		stack_element := LastElement(stack)
 		queue_element := input_queue[0]
 
+		// Si estos son iguales, hacemos pop en queue y stack
 		if LastElement(stack) == queue_element {
 			// POP
 			stack = PopStack(stack)
@@ -413,19 +439,24 @@ func CheckValidInput(productions []string, input string) bool {
 			continue
 		}
 
+		// Si lo anterior no fue verdadero, obtenemos la produccion del diccionario
 		rule, found := LL1_TABLE_STATE[stack_element][queue_element]
 		if !found {
 			return false
 		}
 
+		// Hacemos pop solo al stack
 		stack = PopStack(stack)
 
+		// Obtenemos el lado derecho de la produccion
 		_, right := SplitProduction(rule)
 
+		// Si es epsilon, continuamos con solo el pop al stack
 		if right == "' '" {
 			continue
 		}
 
+		// Obtenemos los tokens, hacemos reverse a la lista, y esta lista se agrega al stack
 		tokens := strings.Split(right, " ")
 		tokens = Reverse(tokens)
 

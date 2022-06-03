@@ -83,6 +83,7 @@ func Intersection(a, b []string) (c []string) {
 	return
 }
 
+// Funcion que convierte un arreglo de valores a un renglon de tabla de HTML
 func BuildHtmlRow(values []string, isHeader bool) string {
 	var rowStart, rowEnd, result string
 	result = "<tr>"

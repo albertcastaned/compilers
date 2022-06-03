@@ -32,23 +32,7 @@ func main() {
 	// Llamar a analizar las producciones
 	output := Analyze(lines)
 
-	// Imprimir terminales y no terminales
-	// fmt.Printf(
-	// 	"Terminal: %s\nNon terminal: %s\n",
-	// 	strings.Join(output.terminals, ", "),
-	// 	strings.Join(output.non_terminals, ", "),
-	// )
-
-	// size := len(output.non_terminals)
-
-	// for i := 0; i < size; i++ {
-	// 	non_terminal := output.non_terminals[i]
-	// 	firsts := FindFirst(lines, non_terminal, output)
-	// 	follows := FindFollow(lines, non_terminal, output, "")
-
-	// 	fmt.Printf("%s => FIRST = {%s}, FOLLOW = {%s}\n", non_terminal, strings.Join(firsts, ", "), strings.Join(follows, ", "))
-	// }
-
+	// Validamos que la gramatica sea LL1 valida antes de continuar
 	var ll1_valid bool
 	ll1_valid = IsLL1Valid(lines, output)
 
@@ -57,8 +41,10 @@ func main() {
 		os.Exit(-1)
 	}
 
+	// Construimos la tabla LL1
 	GetLL1Table(lines, output)
 
+	// Para cada input de entrada se valida si es un input valido para la gramatica
 	for _, input := range inputs {
 		var result string
 		if CheckValidInput(lines, input) {
