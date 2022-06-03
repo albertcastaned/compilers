@@ -8,5 +8,5 @@ TPrime -> ' '
 F -> ( E )
 F -> id
 id + id * id
-id * id + (id * id + id)
+id * id + ( id * id + id )
 id +
